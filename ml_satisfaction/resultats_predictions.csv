@@ -1,0 +1,4 @@
+﻿commentaire,pb_remboursement_avoir,pb_livraison_colis_retard,pb_service_client_sav,pb_produit_defectueux_non_conforme,pb_paiement_prelevement_facturation,pb_commande_annulation_stock,pb_prix_promo_conditions,pb_site_appli_compte,problemes_predits
+"Commande annulée, service client impossible à joindre et toujours pas remboursé.",1,0,1,0,0,1,0,0,pb_remboursement_avoir; pb_service_client_sav; pb_commande_annulation_stock
+Colis reçu en retard avec un produit cassé.,0,1,0,1,0,1,0,0,pb_livraison_colis_retard; pb_produit_defectueux_non_conforme; pb_commande_annulation_stock
+"Le site bug, impossible de me connecter à mon compte.",0,0,0,0,1,1,0,1,pb_paiement_prelevement_facturation; pb_commande_annulation_stock; pb_site_appli_compte

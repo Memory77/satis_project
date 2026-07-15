@@ -1,0 +1,9 @@
+activer le venv : source venv/Scripts/activate
+
+
+ex commande de lancement sur poulpeo: 
+scrapy crawl poulpeo_avis -a url="https://www.poulpeo.com/avis/darty.htm" -a load_more=0 -O darty.csv
+
+
+ex commande de lancement sur trustpilot : 
+scrapy crawl trustpilot -a domain=www.fnac.fr -a max_pages=10 -O fnac_trustpilot.csv
