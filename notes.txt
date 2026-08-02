@@ -1,0 +1,40 @@
+#recuperer les avis de la semaine sur les differents concurrents
+
+#créé l'api IA (fast api) avec le model de ml quia été entrainé, le securiser(token etc). 
+#Il sera attendu d'utiliser ML Flow pour versionner votre Modèle
+#Il faudra aussi utiliser les techniques de mesures de la dérive des données
+
+# faire des appels a supabase pour recolter les avis de la semaine puis ensuite
+# appeler l'api IA afin de retourner des predictions et relever les pb rencontrés pour chacun des concurrents 
+
+0. étape de scraping pour recolte de la donnée pour le ml et alimentation de la bdd
+-poulpeo pour l'entrainement du modele(scraping/)
+-scraping de trustpilot automatisé allant dans une bdd cloud+api dispo(supabase cf maud)
+
+1. Labellisation multi-label(ml_satisfaction/labelisation_multilabel_auto.py)
+   ↓
+2. Entraînement du modèle(ml_satisfaction/train_modele_multilabel.py)
+   ↓
+3. MLflow enregistre :
+   - paramètres TF-IDF
+   - modèle utilisé
+   - métriques F1
+   - fichier modèle
+   ↓
+4. FastAPI expose le modèle :                          
+   POST /predict
+   ↓
+5. Evidently surveille :
+   - data drift
+   - évolution des labels prédits
+   - qualité des données reçues
+   
+#faire un beau dashboard sur streamlit
+
+#faire aussi un monitoring api rest bdd et api ia avec grafana/prometheus 
+
+#une fois tout ceci ok en local, dockeriser le projet, mettre un docker-compose a la racine et faire tourner en microservice
+
+#faire un CI CD
+
+#derniere etape deploiement sur le vps  ? 

@@ -1,0 +1,67 @@
+FastAPI utilise des modèles Pydantic pour valider les corps de requêtes JSON, et génère aussi automatiquement une 
+documentation interactive de l’API, ce qui est exactement ce qu’on va utiliser pour tester /predict.
+
+
+__init__.py -> Il peut rester vide. Il sert juste à dire à Python que app est un package importable.
+
+schemas.py -> Ce fichier sert à définir les formats d’entrée/sortie de ton API.
+
+model_service.py -> Ce fichier est le cœur IA de l'API : il charge le .joblib, récupère les labels, calcule les probabilités, puis transforme les probabilités en 0 ou 1.
+
+main.py -> permet de créer les routes
+
+Api fonctionnelle avec : 
+
+GET /
+GET /health
+POST /predict
+
+
+commande de lancement de l'api : uvicorn app.main:app --reload
+
+
+Ensuite, ouvre dans ton navigateur :
+
+http://127.0.0.1:8000/docs
+
+{
+  "commentaire": "Commande annulée, service client impossible à joindre et toujours pas remboursé.",
+  "concurrent": "cdiscount"
+}
+
+
+Tu devrais avoir une réponse du genre :
+
+{
+  "commentaire": "Commande annulée, service client impossible à joindre et toujours pas remboursé.",
+  "concurrent": "cdiscount",
+  "problemes_predits": [
+    "pb_remboursement_avoir",
+    "pb_service_client_sav",
+    "pb_commande_annulation_stock"
+  ],
+  "predictions": {
+    "pb_remboursement_avoir": 1,
+    "pb_livraison_colis_retard": 0,
+    "pb_service_client_sav": 1
+  },
+  "probabilities": {
+    "pb_remboursement_avoir": 0.83,
+    "pb_livraison_colis_retard": 0.22,
+    "pb_service_client_sav": 0.91
+  },
+  "thresholds": {
+    "pb_remboursement_avoir": 0.65,
+    "pb_livraison_colis_retard": 0.65,
+    "pb_service_client_sav": 0.65
+  }
+}
+
+Les valeurs exactes peuvent changer selon ton modèle local.
+
+
+
+!!!reste a créer le data drift du modele dans ce même repertoire + sécurisation de l'API . !!!
+data drift : L’idée, c’est de surveiller si les nouveaux avis envoyés à ton API ressemblent encore aux avis sur lesquels ton modèle a été entraîné.
+une fois tout ceci OK 
+streamlit.py : recuperer nouveaux de la semaine sur supabase->envoyer a l'api pour predictions chaque entrées->renvoyer en dash sur le streamlit

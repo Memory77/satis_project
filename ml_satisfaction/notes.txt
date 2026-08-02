@@ -1,0 +1,62 @@
+pour entrainer : python train_modele_multilabel.py
+
+
+
+Normalement, ça va créer un dossier :
+
+mlruns/
+
+C’est là que MLflow stocke localement les expériences.
+
+
+Ensuite, lance :
+
+mlflow ui
+
+ouvre : http://127.0.0.1:5000
+
+
+Tu verras ton expérience avec :
+
+classification_multilabel_avis_clients
+
+
+
+
+Et dedans tu pourras voir :
+
+les paramètres du modèle
+les métriques globales
+les métriques par label
+les fichiers sauvegardés
+le modèle
+
+MLflow permet justement de consulter les runs d’expérience et les métriques dans son interface de tracking.
+
+
+
+
+
+Pourquoi MLflow est utile ici ?
+
+Sans MLflow, tu as juste :
+
+un fichier .joblib
+des prints dans le terminal
+
+Avec MLflow, tu gardes une trace propre de chaque entraînement :
+
+Run 1 : TF-IDF max_features=30000, micro-F1=0.739
+Run 2 : TF-IDF max_features=50000, micro-F1=0.752
+Run 3 : seuil différent, micro-F1=...
+
+
+J’ai utilisé MLflow pour assurer la traçabilité des expérimentations. 
+Chaque entraînement du modèle est enregistré avec ses paramètres, ses métriques de performance et ses artefacts, 
+notamment le rapport de classification et le modèle sauvegardé
+
+
+
+FastAPI utilise ensuite :
+
+models/modele_multilabel_avis_local.joblib
