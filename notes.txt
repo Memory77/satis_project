@@ -1,5 +1,3 @@
-#recuperer les avis de la semaine sur les differents concurrents
-
 #créé l'api IA (fast api) avec le model de ml quia été entrainé, le securiser(token etc). 
 #Il sera attendu d'utiliser ML Flow pour versionner votre Modèle
 #Il faudra aussi utiliser les techniques de mesures de la dérive des données
