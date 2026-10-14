@@ -6,3 +6,5 @@ pandas
 numpy
 joblib
 mlflow
+torch
+transformers

@@ -176,4 +176,11 @@ pyrightconfig.json
 # Models
 fastapi_api_ia/models/modele_sentiment_camembert/model.safetensors
 
+# Environnement virtuel personnalisé
+venv1/
+
+# MLflow local
+mlflow.db
+mlartifacts/
+
 # End of https://www.toptal.com/developers/gitignore/api/python
