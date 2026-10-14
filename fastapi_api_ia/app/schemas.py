@@ -14,8 +14,4 @@ class PredictResponse(BaseModel):
     predictions: Dict[str, int]
     probabilities: Dict[str, float]
     thresholds: Dict[str, float]
-
-class SentimentResponse(BaseModel):
-    commentaire: str
-    sentiment: str
-    probabilities: Dict[str, float]
+    model_info: Dict

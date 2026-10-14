@@ -6,7 +6,7 @@ __init__.py -> Il peut rester vide. Il sert juste à dire à Python que app est 
 
 schemas.py -> Ce fichier sert à définir les formats d’entrée/sortie de ton API.
 
-model_service.py -> Ce fichier est le cœur IA de l'API : il charge le .joblib, récupère les labels, calcule les probabilités, puis transforme les probabilités en 0 ou 1.
+model_service.py -> Ce fichier est le cœur IA de l'API : il charge le model via mlflow, récupère les labels, calcule les probabilités, puis transforme les probabilités en 0 ou 1.
 
 main.py -> permet de créer les routes
 
@@ -51,11 +51,13 @@ Tu devrais avoir une réponse du genre :
     "pb_service_client_sav": 0.91
   },
   "thresholds": {
-    "pb_remboursement_avoir": 0.65,
-    "pb_livraison_colis_retard": 0.65,
-    "pb_service_client_sav": 0.65
+    "pb_remboursement_avoir": 0.50,
+    "pb_livraison_colis_retard": 0.50,
+    "pb_service_client_sav": 0.50
   }
 }
++ model_infos
+
 
 Les valeurs exactes peuvent changer selon ton modèle local.
 

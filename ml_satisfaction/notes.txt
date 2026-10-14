@@ -1,62 +1,186 @@
-pour entrainer : python train_modele_multilabel.py
-
-
-
-Normalement, ça va créer un dossier :
-
-mlruns/
-
-C’est là que MLflow stocke localement les expériences.
-
-
-Ensuite, lance :
+Avant d’entraîner le modèle, je lance le serveur MLflow avec la commande suivante :
 
 mlflow ui
 
-ouvre : http://127.0.0.1:5000
+Ensuite, j’ouvre l’interface MLflow dans le navigateur :
 
+http://127.0.0.1:5000
 
-Tu verras ton expérience avec :
+MLflow sert ici à suivre les entraînements du modèle et à enregistrer les différentes versions du modèle.
 
+Selon la configuration locale, MLflow peut créer des éléments comme :
+
+mlruns/
+mlflow.db
+
+Le dossier mlruns/ contient notamment les artefacts liés aux runs, comme les modèles sauvegardés ou les rapports générés.
+Le fichier mlflow.db contient les métadonnées MLflow : expériences, runs, paramètres, métriques, modèles enregistrés, versions et alias.
+
+2. Entraîner le modèle
+Pour entraîner le modèle, j’exécute :
+python train_modele_multilabel.py
+Dans le script d’entraînement, MLflow est configuré avec :
+mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_experiment("classification_multilabel_avis_clients")
+Cela permet d’envoyer les résultats de l’entraînement vers le serveur MLflow.
+L’expérience utilisée s’appelle :
 classification_multilabel_avis_clients
+Chaque exécution du script crée un nouveau run MLflow.
+
+3. Ce que MLflow enregistre
+À chaque entraînement, MLflow enregistre plusieurs éléments :
+- les paramètres du modèle
+- les métriques globales
+- les métriques par label
+- les artefacts générés
+- le modèle entraîné
+Par exemple, on retrouve dans MLflow :
+- test_size
+- random_state
+- paramètres TF-IDF
+- paramètres LogisticRegression
+- micro-F1
+- macro-F1
+- weighted-F1
+- hamming loss
+- subset accuracy
+- rapport de classification
+- modèle sauvegardé
+Le modèle est aussi sauvegardé localement au format :
+modele_multilabel_avis_local.joblib
+Ce fichier contient notamment :
+{
+    "model": model,
+    "label_cols": label_cols
+}
+Il permet de conserver le modèle entraîné ainsi que l’ordre des labels prédits.
+
+
+
+4. Enregistrement dans le Model Registry
+En plus du simple suivi d’expérience, le modèle est enregistré dans le MLflow Model Registry grâce à :
+mlflow.sklearn.log_model(
+    sk_model=model,
+    name="modele_tfidf_ovr_logreg",
+    registered_model_name="avis_multilabel_model"
+)
+Le paramètre :
+registered_model_name="avis_multilabel_model"
+permet de créer un modèle versionné dans le registry MLflow.
+Par exemple :
+avis_multilabel_model
+Version 1
+Version 2
+Version 3
+À chaque nouvel entraînement enregistré, MLflow peut créer une nouvelle version du modèle.
 
 
 
 
-Et dedans tu pourras voir :
+5. Alias champion
+Après l’enregistrement du modèle, on associe l’alias :
+champion
+à la version créée.
+Dans le code, cela se fait avec :
+client.set_registered_model_alias(
+    name="avis_multilabel_model",
+    alias="champion",
+    version=latest_version.version
+)
+L’alias champion désigne la version actuellement validée du modèle, c’est-à-dire celle que l’API doit utiliser.
+Exemple :
+avis_multilabel_model
+Version 1 -> @champion
+Si un nouveau modèle est entraîné et validé, on peut avoir ensuite :
+avis_multilabel_model
+Version 2 -> @champion
+Cela évite de devoir modifier le code de l’API à chaque nouvelle version du modèle.
 
-les paramètres du modèle
-les métriques globales
-les métriques par label
-les fichiers sauvegardés
-le modèle
-
-MLflow permet justement de consulter les runs d’expérience et les métriques dans son interface de tracking.
 
 
-
-
-
-Pourquoi MLflow est utile ici ?
-
-Sans MLflow, tu as juste :
-
-un fichier .joblib
-des prints dans le terminal
-
-Avec MLflow, tu gardes une trace propre de chaque entraînement :
-
+6. Pourquoi MLflow est utile ici ?
+Sans MLflow, on aurait seulement :
+- un fichier .joblib
+- des résultats affichés dans le terminal
+Avec MLflow, on garde une trace structurée de chaque entraînement.
+Par exemple :
 Run 1 : TF-IDF max_features=30000, micro-F1=0.739
 Run 2 : TF-IDF max_features=50000, micro-F1=0.752
 Run 3 : seuil différent, micro-F1=...
-
-
-J’ai utilisé MLflow pour assurer la traçabilité des expérimentations. 
-Chaque entraînement du modèle est enregistré avec ses paramètres, ses métriques de performance et ses artefacts, 
-notamment le rapport de classification et le modèle sauvegardé
+MLflow permet donc de comparer les entraînements, de conserver les paramètres utilisés, les métriques obtenues et les fichiers produits.
+Phrase possible pour le rapport :
+J’ai utilisé MLflow pour assurer la traçabilité des expérimentations. Chaque entraînement du modèle est enregistré avec ses paramètres, ses métriques de performance et ses artefacts, notamment le rapport de classification et le modèle sauvegardé. Le modèle est ensuite enregistré dans le MLflow Model Registry avec un nom, une version et un alias champion, ce qui permet d’identifier précisément la version utilisée par l’API.
 
 
 
-FastAPI utilise ensuite :
+7. Utilisation dans FastAPI
+FastAPI utilise ensuite le modèle enregistré dans MLflow grâce à l’URI :
+models:/avis_multilabel_model@champion
+Dans model_service.py, on récupère dynamiquement la version associée à l’alias champion :
+self.model_version = self.client.get_model_version_by_alias(
+    name="avis_multilabel_model",
+    alias="champion"
+)
+Puis l’API charge le modèle correspondant :
+self.model = mlflow.sklearn.load_model(
+    "models:/avis_multilabel_model@champion"
+)
+Cela permet à l’API d’utiliser automatiquement la version du modèle marquée comme champion.
 
-models/modele_multilabel_avis_local.joblib
+
+
+8. Informations renvoyées par l’API
+Lorsqu’une prédiction est faite, l’API renvoie non seulement les labels prédits, mais aussi les informations du modèle utilisé.
+Exemple :
+"model_info": {
+  "model_name": "avis_multilabel_model",
+  "model_alias": "champion",
+  "model_version": "1",
+  "mlflow_run_id": "...",
+  "model_uri": "models:/avis_multilabel_model@champion",
+  "source": "..."
+}
+Ces informations permettent ensuite de stocker en base de données quelle version du modèle a produit chaque prédiction.
+
+
+
+9. Lien avec la base de données
+Dans la table de prédictions, on ne stocke pas le modèle complet.
+On stocke plutôt :
+- les prédictions
+- les probabilités
+- les seuils utilisés
+- le nom du modèle
+- la version du modèle
+- l’alias utilisé
+- le run_id MLflow
+Cela permet de garder une traçabilité.
+Exemple :
+review_id = 125
+problemes_predits = pb_produit_defectueux_non_conforme
+model_name = avis_multilabel_model
+model_version = 1
+model_alias = champion
+mlflow_run_id = ...
+Ainsi, si une prédiction a été faite avec la version 1 du modèle, puis qu’une autre est faite plus tard avec la version 2, 
+on peut retrouver quelle version a généré chaque résultat.
+
+10. À retenir
+MLflow Tracking :
+suit les entraînements, les paramètres, les métriques et les artefacts.
+MLflow Model Registry :
+versionne le modèle entraîné.
+Alias champion :
+indique la version actuellement utilisée par l’API.
+FastAPI :
+charge le modèle champion et renvoie les prédictions.
+Database :
+stocke les prédictions et les informations du modèle utilisé.
+
+
+En résumé :
+MLflow sert de référentiel de suivi et de versioning. 
+À chaque entraînement, un nouveau run est créé avec les paramètres, les métriques et les artefacts. 
+Le modèle est ensuite enregistré dans le Model Registry sous le nom avis_multilabel_model. 
+L’alias champion permet d’indiquer quelle version est utilisée par l’API FastAPI. 
+Ainsi, chaque prédiction peut être reliée à une version précise du modèle.
