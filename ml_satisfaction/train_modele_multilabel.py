@@ -3,19 +3,19 @@ import numpy as np
 import joblib
 import mlflow
 import mlflow.sklearn
-
+import json
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, f1_score, hamming_loss, accuracy_score
-
+from mlflow.tracking import MlflowClient
 
 # =========================
 # 0. Configuration MLflow
 # =========================
-
+mlflow.set_tracking_uri("http://127.0.0.1:5000")
 mlflow.set_experiment("classification_multilabel_avis_clients")
 
 
@@ -190,7 +190,10 @@ with mlflow.start_run(run_name="tfidf_ovr_logistic_regression"):
     }
 
     joblib.dump(bundle, "modele_multilabel_avis_local.joblib")
-
+    
+    with open("label_cols.json", "w", encoding="utf-8") as f:
+        json.dump(label_cols, f, ensure_ascii=False, indent=2)
+        
     print("\nModèle sauvegardé : modele_multilabel_avis_local.joblib")
 
     # -------------------------
@@ -199,11 +202,42 @@ with mlflow.start_run(run_name="tfidf_ovr_logistic_regression"):
 
     mlflow.log_artifact("modele_multilabel_avis_local.joblib")
     mlflow.log_artifact("classification_report_multilabel.csv")
-
+    mlflow.log_artifact("label_cols.json")
+    
     # Optionnel : logger le modèle sklearn au format MLflow
     mlflow.sklearn.log_model(
         sk_model=model,
-        name="modele_tfidf_ovr_logreg"
+        name="modele_tfidf_ovr_logreg",
+        registered_model_name="avis_multilabel_model"
+    )
+    
+    # -------------------------
+    # Associer l'alias "champion" à la version créée
+    # -------------------------
+
+    client = MlflowClient()
+    run_id = mlflow.active_run().info.run_id
+
+    model_versions = client.search_model_versions(
+        f"name='avis_multilabel_model' and run_id='{run_id}'"
     )
 
+    if model_versions:
+        latest_version = max(model_versions, key=lambda mv: int(mv.version))
+
+        client.set_registered_model_alias(
+            name="avis_multilabel_model",
+            alias="champion",
+            version=latest_version.version
+        )
+
+        mlflow.log_param("registered_model_name", "avis_multilabel_model")
+        mlflow.log_param("registered_model_version", latest_version.version)
+        mlflow.log_param("model_alias", "champion")
+        mlflow.log_param("mlflow_run_id", run_id)
+        
+        print(f"\nAlias champion associé à la version {latest_version.version}")
+    else:
+        print("\nAucune version retrouvée dans le Model Registry.")
+        
     print("\nRun MLflow enregistré.")

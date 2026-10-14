@@ -1,0 +1,23 @@
+artifact_path: file:C:/Users/socci/Desktop/satis_project/ml_satisfaction/mlruns/1/models/m-c81c980c4c4e4902ac508305627073a6/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.4
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+mlflow_version: 3.15.0
+model_id: m-c81c980c4c4e4902ac508305627073a6
+model_size_bytes: 5078166
+model_uuid: m-c81c980c4c4e4902ac508305627073a6
+prompts: null
+run_id: e794993440b64e3e97917df90ce539e5
+utc_time_created: '2026-10-14 13:02:24.938122'
