@@ -173,4 +173,7 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# Models
+fastapi_api_ia/models/modele_sentiment_camembert/model.safetensors
+
 # End of https://www.toptal.com/developers/gitignore/api/python

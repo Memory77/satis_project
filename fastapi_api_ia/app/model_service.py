@@ -1,33 +1,58 @@
 from pathlib import Path
-from typing import Dict, List, Optional
-
+from typing import Dict, Optional
+import torch
 import joblib
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-
-# Chemin vers ton modèle
 BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
-
 
 class ModelService:
-    def __init__(self):
-        if not MODEL_PATH.exists():
-            raise FileNotFoundError(f"Modèle introuvable : {MODEL_PATH}")
+    def __init__(self, model_filename: str, is_camembert: bool = False):
+        self.is_camembert = is_camembert
+        self.model_path = BASE_DIR / "models" / model_filename
+        
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"Modèle introuvable : {self.model_path}")
 
-        bundle = joblib.load(MODEL_PATH)
+        if self.is_camembert:
+            print(f"Chargement du modèle CamemBERT depuis {self.model_path}...")
+            self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
+            self.model = AutoModelForSequenceClassification.from_pretrained(str(self.model_path))
+            self.model.eval()
+            self.id2label = {0: "négatif", 1: "mitigé", 2: "positif"}
+        else:
+            print(f"Chargement du modèle multi-label depuis {self.model_path}...")
+            bundle = joblib.load(self.model_path)
+            if isinstance(bundle, dict) and "model" in bundle:
+                self.model = bundle["model"]
+                self.label_cols = bundle.get("label_cols", [])
+            else:
+                self.model = bundle
+                self.label_cols = []
+            self.default_threshold = 0.65
 
-        # Ton modèle local est normalement sauvegardé sous forme :
-        # {"model": model, "label_cols": label_cols}
-        self.model = bundle["model"]
-        self.label_cols = bundle["label_cols"]
+    def predict_sentiment(self, text: str) -> dict:
+        """Méthode dédiée au modèle CamemBERT (Sentiment)"""
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=-1)[0]
+            pred_id = torch.argmax(probs).item()
 
-        # Seuil de décision.
-        # Si proba >= 0.65, on active le label.
-        self.default_threshold = 0.65
+        return {
+            "commentaire": text,
+            "sentiment": self.id2label[pred_id],
+            "probabilities": {
+                "négatif": round(float(probs[0]), 4),
+                "mitigé": round(float(probs[1]), 4),
+                "positif": round(float(probs[2]), 4)
+            }
+        }
 
     def predict_one(self, commentaire: str, concurrent: Optional[str] = None) -> Dict:
+        """Méthode dédiée au modèle multi-label (Scikit-Learn)"""
         probas = self.model.predict_proba([commentaire])[0]
-
         predictions = {}
         probabilities = {}
         thresholds = {}
@@ -54,5 +79,6 @@ class ModelService:
             "thresholds": thresholds,
         }
 
-
-model_service = ModelService()
+# Instanciation des deux services distincts
+multilabel_service = ModelService("modele_multilabel_avis_local.joblib", is_camembert=False)
+sentiment_service = ModelService("modele_sentiment_camembert", is_camembert=True)
