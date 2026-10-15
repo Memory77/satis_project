@@ -152,6 +152,8 @@ class ModelService:
 class SentimentModelService:
     """Service dédié au modèle d'analyse de sentiment (CamemBERT)"""
     def __init__(self):
+        self.client = MlflowClient()
+
         if not CAMEMBERT_PATH.exists():
             raise FileNotFoundError(f"Modèle CamemBERT introuvable : {CAMEMBERT_PATH}")
 
@@ -176,9 +178,10 @@ class SentimentModelService:
             # Ajout des infos pour le modèle local
             self.model_info = {
                 "model_name": SENTIMENT_NAME,
-                    "model_alias": SENTIMENT_ALIAS,
-                    "model_version": self.model_version.version,
-                    "source": "mlflow_registry"
+                "model_alias": SENTIMENT_ALIAS,
+                "model_version": self.model_version.version,
+                "mlflow_run_id": run_id_ou_fallback,
+                "source": "mlflow_registry"
             }
             print(">>> Modèle CamemBERT chargé avec succès depuis MLflow Registry.")
 
@@ -217,7 +220,8 @@ class SentimentModelService:
                 "négatif": self.default_threshold,
                 "mitigé": self.default_threshold,
                 "positif": self.default_threshold
-            }
+            },
+            "model_info": self.model_info
         }
     
 model_service = ModelService()
