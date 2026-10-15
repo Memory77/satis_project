@@ -10,6 +10,16 @@ __pycache__/
 # C extensions
 *.so
 
+
+# MLflow - stockage local
+mlflow.db
+mlflow_*.db
+mlruns/
+mlartifacts/
+
+# Modèles entraînés
+*.joblib
+
 # Distribution / packaging
 .Python
 build/
