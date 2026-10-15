@@ -180,6 +180,7 @@ fastapi_api_ia/models/modele_sentiment_camembert/model.safetensors
 venv1/
 
 # MLflow local
+mlruns/
 mlflow.db
 mlartifacts/
 
