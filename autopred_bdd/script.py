@@ -3,7 +3,7 @@ from select import select
 from supabase import Client, create_client
 import pandas as pd
 from fastapi import FastAPI, Request
-import requests
+import requests, os
 
 api_url = os.environ.get("SUPABASE_URL")
 secret_key = os.environ.get("SUPABASE_KEY")
@@ -14,7 +14,7 @@ supabase_client: Client = create_client(api_url, secret_key)
 response = (
     supabase_client.from_("trustpilot_scraping")
     .select("id, content, company")
-    .limit(1)
+    .limit(3)
     .execute())
 
 resp = response.data
@@ -37,3 +37,17 @@ status_code = r.status_code
 print(response_dict)
 
 #enregistrer les résultats dans supabase
+"""try:
+    print(f"📤 Connexion Supabase... ({len(cleaned_data_for_supabase)} avis uniques)")
+    supabase_client: Client = create_client(api_url, secret_key)
+    
+    if cleaned_data_for_supabase:
+        response = (
+            supabase_client.from_("trustpilot_scraping")
+            .upsert(cleaned_data_for_supabase, on_conflict="author, title, date_pub, company")
+            .execute()
+        )
+        print("✅ Données insérées avec succès !")
+except Exception as e:
+    print(f"❌ Erreur Supabase : {e}")
+    sys.exit(1)"""
