@@ -2,6 +2,9 @@ name: Pred insertion
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - autopred_bdd
 
 jobs:
   report:
