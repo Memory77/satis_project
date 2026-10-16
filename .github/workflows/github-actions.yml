@@ -30,16 +30,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r autopred_bdd/requirements.txt
 
-
-      - name: Lancement de MLflow et attente
-        run: |
-          cd ml_satisfaction
-          mlflow server --host 127.0.0.1 --port 5000 > mlflow.log 2>&1 &
-          
-          echo "Attente de MLflow..."
-          timeout 30 bash -c 'until curl -s http://127.0.0.1:5000/health > /dev/null; do sleep 1; done' || (cat mlflow.log && exit 1)
-          echo "MLflow est prêt !"
-
       - name: Lancement de l'API FastAPI et attente
         run: |
           cd fastapi_api_ia

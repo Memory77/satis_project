@@ -179,5 +179,5 @@ mlruns/
 mlflow.db
 mlartifacts/
 .joblib
-
+ml_satisfaction/train_modele_multilabel.py
 # End of https://www.toptal.com/developers/gitignore/api/python
