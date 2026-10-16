@@ -1,0 +1,45 @@
+name: Pred insertion
+
+on:
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.API_URL }}
+      SUPABASE_KEY: ${{ secrets.SECRET_KEY }}
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v3
+
+      - name: Installation de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Installation des dépendances
+        run: |
+          cd autopred_bdd
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: lancement mlflow
+        run:  |
+          cd ..
+          cd ml_satisfaction
+          mlflow ui
+
+      - name: lancement api
+        run:  |
+          cd ..
+          cd fastapi_api_ia
+          uvicorn app.main:app --reload
+
+      - name: lancement script
+        run:  |
+          cd ..
+          cd autopred_bdd
+          python script.py
