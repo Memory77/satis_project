@@ -32,7 +32,7 @@ for y in resp:
         headers={"Content-Type": "application/json"}
         )
     dict = r.json()
-    dict['id'] = y['id']
+    dict['review'] = y['id']
     preds.append(dict)
 
 #response_dict = r.json()
