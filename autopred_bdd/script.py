@@ -14,6 +14,7 @@ supabase_client: Client = create_client(api_url, secret_key)
 response = (
     supabase_client.from_("trustpilot_scraping")
     .select("id, content, company")
+    .lt("rating", 3)
     .limit(3)
     .execute())
 

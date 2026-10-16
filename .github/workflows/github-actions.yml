@@ -34,6 +34,7 @@ jobs:
       - name: Lancement de MLflow et attente
         run: |
           cd ml_satisfaction
+          python train_modele_multilabel.py
           mlflow server --host 127.0.0.1 --port 5000 > mlflow.log 2>&1 &
           
           echo "Attente de MLflow..."
