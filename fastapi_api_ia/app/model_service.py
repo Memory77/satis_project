@@ -20,6 +20,16 @@ MODEL_URI = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
 # DagsHub
 REPO_OWNER = "maudb18"
 REPO_NAME = "satis_project"
+
+token = os.environ.get("DAGSHUB_USER_TOKEN")
+if token:
+    dagshub.init(
+        repo_owner=REPO_OWNER,
+        repo_name=REPO_NAME,
+        mlflow=True
+    )
+
+
 dagshub.init(repo_owner=REPO_OWNER, repo_name=REPO_NAME, mlflow=True)
 DAGSHUB_URI = f"https://dagshub.com/{REPO_OWNER}/{REPO_NAME}.mlflow"
 mlflow.set_tracking_uri(DAGSHUB_URI)

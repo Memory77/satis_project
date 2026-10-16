@@ -31,13 +31,17 @@ jobs:
           pip install -r autopred_bdd/requirements.txt
 
       - name: Lancement de l'API FastAPI et attente
+        env:
+          DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: maudb18
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           cd fastapi_api_ia
           uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
           
           echo "Attente de l'API..."
-          timeout 30 bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 1; done' || (cat uvicorn.log && exit 1)
-          echo "FastAPI est opérationnelle !"
+          timeout 60 bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 2; done' || (cat uvicorn.log && exit 1)
+          echo "FastAPI est prête !"
 
       - name: Exécution du script de prédiction
         run: |
