@@ -59,7 +59,7 @@ try:
             .upsert(clean_preds, on_conflict="model_info, problemes_predits, predictions, probabilities, thresholds")
             .execute()
         )
-        print("✅ Données insérées avec succès !")
+        print("Succès !")
 except Exception as e:
     print(f"❌ Erreur Supabase : {e}")
     sys.exit(1)
