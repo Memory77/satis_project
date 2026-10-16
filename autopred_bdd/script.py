@@ -15,7 +15,7 @@ response = (
     supabase_client.from_("trustpilot_scraping")
     .select("id, content, company")
     .lt("rating", 3)
-    .limit(5)
+    .limit(10)
     .execute())
 
 resp = response.data
@@ -32,10 +32,7 @@ for y in resp:
         headers={"Content-Type": "application/json"}
         )
 
-    print("Statut HTTP :", r.status_code)
-    print("Contenu brut :", r.text)
-
-    r.raise_for_status()  # Déclenchera une exception explicite si code 4xx ou 5xx
+    r.raise_for_status()
     
     dict = r.json()
     dict['review'] = y['id']
