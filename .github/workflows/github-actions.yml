@@ -43,7 +43,12 @@ jobs:
           timeout 60 bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 2; done' || (cat uvicorn.log && exit 1)
           echo "FastAPI est prête !"
 
-      - name: Exécution du script de prédiction
+      - name: Exécution du script
         run: |
           cd autopred_bdd
           python script.py
+
+      - name: Affichage des logs FastAPI en cas d'erreur
+        if: failure()
+        run: |
+          cat fastapi_api_ia/uvicorn.log

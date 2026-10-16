@@ -31,6 +31,12 @@ for y in resp:
         },
         headers={"Content-Type": "application/json"}
         )
+
+    print("Statut HTTP :", r.status_code)
+    print("Contenu brut :", r.text)
+
+    r.raise_for_status()  # Déclenchera une exception explicite si code 4xx ou 5xx
+    
     dict = r.json()
     dict['review'] = y['id']
     preds.append(dict)
