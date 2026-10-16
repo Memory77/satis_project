@@ -40,6 +40,12 @@ jobs:
           timeout 30 bash -c 'until curl -s http://127.0.0.1:5000/health > /dev/null; do sleep 1; done' || (cat mlflow.log && exit 1)
           echo "MLflow est prêt !"
 
+
+      - name: Entraînement du modèle
+        run: |
+          cd ml_satisfaction
+          python train_modele_multilabel.py
+
       - name: Lancement de l'API FastAPI et attente
         run: |
           cd fastapi_api_ia
