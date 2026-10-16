@@ -57,7 +57,7 @@ try:
 
         response = (
             supabase_client.from_("multilabel_predict")
-            .upsert(clean_preds, on_conflict="model_info, problemes_predits, predictions, probabilities, thresholds")
+            .upsert(clean_preds, on_conflict="problemes_predits, predictions, probabilities, thresholds")
             .execute()
         )
         print("Succès !")
