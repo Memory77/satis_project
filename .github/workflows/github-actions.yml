@@ -34,12 +34,18 @@ jobs:
       - name: Lancement de MLflow et attente
         run: |
           cd ml_satisfaction
-          python train_modele_multilabel.py
           mlflow server --host 127.0.0.1 --port 5000 > mlflow.log 2>&1 &
           
           echo "Attente de MLflow..."
           timeout 30 bash -c 'until curl -s http://127.0.0.1:5000/health > /dev/null; do sleep 1; done' || (cat mlflow.log && exit 1)
           echo "MLflow est prêt !"
+
+
+      - name: Entraînement du modèle
+        run: |
+          cd ml_satisfaction
+          # 3. Maintenant que MLflow tourne, on peut entraîner le modèle
+          python train_modele_multilabel.py
 
       - name: Lancement de l'API FastAPI et attente
         run: |
