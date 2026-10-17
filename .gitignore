@@ -131,6 +131,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+apivenv/
 
 # Spyder project settings
 .spyderproject
@@ -173,4 +174,10 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+#mlflow
+mlruns/
+mlflow.db
+mlartifacts/
+.joblib
+ml_satisfaction/train_modele_multilabel.py
 # End of https://www.toptal.com/developers/gitignore/api/python

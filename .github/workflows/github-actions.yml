@@ -1,0 +1,56 @@
+name: Pred insertion
+
+on:
+  schedule:
+     - cron: "0 9 * * sat"
+  workflow_dispatch:
+  push:
+    branches:
+      - autopred_bdd
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Installation des dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r autopred_bdd/requirements.txt
+
+      - name: Lancement de l'API FastAPI et attente
+        env:
+          DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: maudb18
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          cd fastapi_api_ia
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+          
+          echo "Attente de l'API..."
+          timeout 60 bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 2; done' || (cat uvicorn.log && exit 1)
+          echo "FastAPI est prête !"
+
+      - name: Exécution du script
+        run: |
+          cd autopred_bdd
+          python script.py
+
+      - name: Affichage des logs FastAPI en cas d'erreur
+        if: failure()
+        run: |
+          cat fastapi_api_ia/uvicorn.log

@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Dict, Optional
 import json
-
+import os
+import dagshub
 import joblib
 import mlflow
 import mlflow.sklearn
@@ -11,24 +12,40 @@ from mlflow.tracking import MlflowClient
 # =========================
 # Configuration MLflow Model Registry
 # =========================
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+#mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
 MODEL_NAME = "avis_multilabel_model"
 MODEL_ALIAS = "champion"
 MODEL_URI = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
 
+# DagsHub
+REPO_OWNER = "maudb18"
+REPO_NAME = "satis_project"
 
+token = os.environ.get("DAGSHUB_USER_TOKEN")
+if token:
+    dagshub.init(
+        repo_owner=REPO_OWNER,
+        repo_name=REPO_NAME,
+        mlflow=True
+    )
+
+
+dagshub.init(repo_owner=REPO_OWNER, repo_name=REPO_NAME, mlflow=True)
+DAGSHUB_URI = f"https://dagshub.com/{REPO_OWNER}/{REPO_NAME}.mlflow"
+mlflow.set_tracking_uri(DAGSHUB_URI)
 # =========================
 # Fallback local joblib
 # =========================
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
+#BASE_DIR = Path(__file__).resolve().parent.parent
+#MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
 
 
 class ModelService:
     def __init__(self):
-        self.client = MlflowClient()
+        tracking_uri = mlflow.get_tracking_uri()
+        self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
 
         # -------------------------
         # 1. Récupérer la version exacte du modèle champion
@@ -95,13 +112,13 @@ class ModelService:
             return label_cols
 
         except Exception:
-            if not MODEL_PATH.exists():
+            """if not MODEL_PATH.exists():
                 raise FileNotFoundError(
                     "Impossible de charger label_cols.json depuis MLflow "
                     f"et modèle local introuvable : {MODEL_PATH}"
                 )
 
-            bundle = joblib.load(MODEL_PATH)
+            bundle = joblib.load(MODEL_PATH)"""
 
             if "label_cols" not in bundle:
                 raise KeyError(
