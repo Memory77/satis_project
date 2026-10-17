@@ -8,19 +8,8 @@ import requests, os, sys
 api_url = os.environ.get("SUPABASE_URL")
 secret_key = os.environ.get("SUPABASE_KEY")
 
+
 supabase_client: Client = create_client(api_url, secret_key)
-
-"""response = (
-    supabase_client.from_("trustpilot_scraping")
-    .select("id, content, company")
-    .lt("rating", 3)
-    .limit(10)
-    .execute())
-
-resp = response.data"""
-
-
-
 
 try:
     
@@ -43,22 +32,25 @@ try:
     resp = response.data
     nb = response.count
 
-    print(f"{nb} avis à traiter")
+    if nb == 0:
+        print("✅ Aucun nouvel avis à prédire. Fin normale de l'exécution.")
+        sys.exit(0)
+    else:
+        print(f"{nb} avis à traiter")
     
 
 except Exception as e:
     print(f"❌ Erreur Supabase : {e}")
+    print()
     sys.exit(1)
 
 try:
     #passer les données à l'API du modèle
     preds = []
-    for y in resp:
-
-        json={
-                "commentaire": y['content'],
-                "concurrent": y['company']
-                    }
+    unique_resp = list({item["id"]: item for item in resp}.values())
+    for y in unique_resp[:1000]:
+        if y['content'] is None:
+            continue
 
         r = requests.post(
             url='http://127.0.0.1:8000/predict',
@@ -93,9 +85,10 @@ try:
               pred.pop("concurrent")
               clean_preds.append(pred)
 
+        clean_preds_uniques = list({item["review"]: item for item in clean_preds}.values())
         response = (
             supabase_client.from_("multilabel_predict")
-            .upsert(clean_preds, on_conflict="problemes_predits, predictions, probabilities, thresholds")
+            .upsert(clean_preds_uniques, on_conflict="problemes_predits, predictions, probabilities, thresholds")
             .execute()
         )
 
