@@ -44,6 +44,7 @@ try:
     nb = response.count
 
     print(f"{nb} avis à traiter")
+    
 
 except Exception as e:
     print(f"❌ Erreur Supabase : {e}")
@@ -53,6 +54,12 @@ try:
     #passer les données à l'API du modèle
     preds = []
     for y in resp:
+
+        json={
+                "commentaire": y['content'],
+                "concurrent": y['company']
+                    }
+
         r = requests.post(
             url='http://127.0.0.1:8000/predict',
             json={
