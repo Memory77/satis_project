@@ -8,44 +8,72 @@ import requests, os, sys
 api_url = os.environ.get("SUPABASE_URL")
 secret_key = os.environ.get("SUPABASE_KEY")
 
-#récupérer les données de supabase (id + commentaires)
 supabase_client: Client = create_client(api_url, secret_key)
 
-response = (
+"""response = (
     supabase_client.from_("trustpilot_scraping")
     .select("id, content, company")
     .lt("rating", 3)
     .limit(10)
     .execute())
 
-resp = response.data
+resp = response.data"""
 
-#passer les données à l'API du modèle
-preds = []
-for y in resp:
-    r = requests.post(
-        url='http://127.0.0.1:8000/predict',
-        json={
-    "commentaire": y['content'],
-    "concurrent": y['company']
-        },
-        headers={"Content-Type": "application/json"}
-        )
 
-    r.raise_for_status()
-    
-    dict = r.json()
-    dict['review'] = y['id']
-    preds.append(dict)
 
-#response_dict = r.json()
-#response_header = r.headers
-#status_code = r.status_code
 
-#print(preds)
-
-#enregistrer les résultats dans supabase
 try:
+    
+    #nombre d'avis déjà traités
+    response = (
+        supabase_client.from_("multilabel_predict")
+        .select("*", count="exact", head=True)
+        .execute()
+    )
+
+    avant = response.count
+
+    #récupérer les données de supabase (id + commentaires)
+    response = (
+        supabase_client.from_("reviews_a_predire")
+        .select("id, content, company", count="exact", head=True)
+        .execute()
+    )
+
+    resp = response.data
+    nb = response.count
+
+    print(f"{nb} avis à traiter")
+
+except Exception as e:
+    print(f"❌ Erreur Supabase : {e}")
+    sys.exit(1)
+
+try:
+    #passer les données à l'API du modèle
+    preds = []
+    for y in resp:
+        r = requests.post(
+            url='http://127.0.0.1:8000/predict',
+            json={
+        "commentaire": y['content'],
+        "concurrent": y['company']
+            },
+            headers={"Content-Type": "application/json"}
+            )
+
+        r.raise_for_status()
+        
+        dict = r.json()
+        dict['review'] = y['id']
+        preds.append(dict)
+
+except Exception as e:
+    print(f"💥 {e}")
+    sys.exit(1)
+
+try:
+    #enregistrer les résultats dans supabase
     print(f"📤 Connexion Supabase... ({len(preds)} prédictions)")
     supabase_client: Client = create_client(api_url, secret_key)
     
@@ -63,7 +91,18 @@ try:
             .upsert(clean_preds, on_conflict="problemes_predits, predictions, probabilities, thresholds")
             .execute()
         )
-        print("Succès !")
+
+        #nombre d'avis déjà traités
+        response = (
+            supabase_client.from_("multilabel_predict")
+            .select("*", count="exact", head=True)
+            .execute()
+        )
+
+        après = response.count
+
+        print(f"Succès ! {après - avant} sur {nb} avis ont été traités")
+
 except Exception as e:
     print(f"❌ Erreur Supabase : {e}")
     sys.exit(1)
