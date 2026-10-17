@@ -36,7 +36,7 @@ try:
     #récupérer les données de supabase (id + commentaires)
     response = (
         supabase_client.from_("reviews_a_predire")
-        .select("id, content, company", count="exact", head=True)
+        .select("id, content, company", count="exact")
         .execute()
     )
 
