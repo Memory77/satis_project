@@ -1,249 +1,234 @@
+import json
 from pathlib import Path
 from typing import Dict, Optional
-import json
-<<<<<<< HEAD
-import os
-import dagshub
-=======
 
-import torch
->>>>>>> feature/analyse-sentiments-bdd
 import joblib
 import mlflow
 import mlflow.sklearn
+import mlflow.transformers
+import torch
 from mlflow.tracking import MlflowClient
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-
+import dagshub, os
 
 # =========================
-# Configuration MLflow Model Registry (Multi-label)
+# Configuration MLflow Registry
 # =========================
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 #mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
+#Dagshub
+REPO_OWNER = "maudb18"
+REPO_NAME = "satis_project"
+DAGSHUB_URI = f"https://dagshub.com/{REPO_OWNER}/{REPO_NAME}.mlflow"
+
+dagshub.init(repo_owner=REPO_OWNER, repo_name=REPO_NAME, mlflow=True)
+mlflow.set_tracking_uri(DAGSHUB_URI)
+
+# Modèle Multi-label
 MODEL_NAME = "avis_multilabel_model"
 MODEL_ALIAS = "champion"
 MODEL_URI = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
 
-# DagsHub
-REPO_OWNER = "maudb18"
-REPO_NAME = "satis_project"
-
-token = os.environ.get("DAGSHUB_USER_TOKEN")
-if token:
-    dagshub.init(
-        repo_owner=REPO_OWNER,
-        repo_name=REPO_NAME,
-        mlflow=True
-    )
-
-
-dagshub.init(repo_owner=REPO_OWNER, repo_name=REPO_NAME, mlflow=True)
-DAGSHUB_URI = f"https://dagshub.com/{REPO_OWNER}/{REPO_NAME}.mlflow"
-mlflow.set_tracking_uri(DAGSHUB_URI)
-# =========================
-# Fallback local joblib
-# =========================
-
-#BASE_DIR = Path(__file__).resolve().parent.parent
-#MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
-
-# =========================
-# CamemBERT
-# =========================
-CAMEMBERT_PATH = BASE_DIR / "models" / "modele_sentiment_camembert"
+# Modèle Sentiment (CamemBERT)
 SENTIMENT_NAME = "avis_sentiment_model"
 SENTIMENT_ALIAS = "champion1"
+SENTIMENT_URI = f"models:/{SENTIMENT_NAME}@{SENTIMENT_ALIAS}"
+
+# Identifiant Hugging Face Hub (remplace le dossier local)
+CAMEMBERT_HF_ID = "solen16/modele_sentiment_camembert"
+
+# Fallback local pour le multilabel
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
+
 
 class ModelService:
-    def __init__(self):
-        tracking_uri = mlflow.get_tracking_uri()
-        self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
 
-        # -------------------------
-        # 1. Récupérer la version exacte du modèle champion
-        # -------------------------
+  def __init__(self):
+    self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
 
-        self.model_version = self.client.get_model_version_by_alias(
-            name=MODEL_NAME,
-            alias=MODEL_ALIAS
+    # 1. Récupérer la version exacte du modèle champion
+    self.model_version = self.client.get_model_version_by_alias(
+        name=MODEL_NAME, alias=MODEL_ALIAS
+    )
+
+    # 2. Charger le modèle depuis MLflow Registry
+    self.model = mlflow.sklearn.load_model(MODEL_URI)
+
+    # 3. Infos du modèle pour traçabilité API + database
+    self.model_info = {
+        "model_name": MODEL_NAME,
+        "model_alias": MODEL_ALIAS,
+        "model_version": self.model_version.version,
+        "mlflow_run_id": self.model_version.run_id,
+        "model_uri": MODEL_URI,
+        "source": self.model_version.source,
+    }
+
+    # 4. Charger les labels
+    self.label_cols = self._load_label_cols()
+
+    # 5. Seuil de décision
+    self.default_threshold = 0.50
+
+  def _load_label_cols(self):
+    """Charge les labels associés au modèle.
+
+    Priorité :
+    1. label_cols.json depuis les artefacts MLflow du run
+    2. fallback depuis le fichier joblib local
+    """
+    try:
+      label_cols_path = self.client.download_artifacts(
+          run_id=self.model_version.run_id, path="label_cols.json"
+      )
+
+      with open(label_cols_path, "r", encoding="utf-8") as f:
+        label_cols = json.load(f)
+
+      return label_cols
+
+    except Exception:
+      if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            "Impossible de charger label_cols.json depuis MLflow "
+            f"et modèle local introuvable : {MODEL_PATH}"
         )
 
-        # -------------------------
-        # 2. Charger le modèle depuis MLflow Registry
-        # -------------------------
+      bundle = joblib.load(MODEL_PATH)
 
-        self.model = mlflow.sklearn.load_model(MODEL_URI)
+      if "label_cols" not in bundle:
+        raise KeyError(
+            "Le fichier joblib local ne contient pas la clé 'label_cols'."
+        )
 
-        # -------------------------
-        # 3. Infos du modèle pour traçabilité API + database
-        # -------------------------
+      return bundle["label_cols"]
 
-        self.model_info = {
-            "model_name": MODEL_NAME,
-            "model_alias": MODEL_ALIAS,
-            "model_version": self.model_version.version,
-            "mlflow_run_id": self.model_version.run_id,
-            "model_uri": MODEL_URI,
-            "source": self.model_version.source,
-        }
+  def predict_one(
+      self, commentaire: str, concurrent: Optional[str] = None
+  ) -> Dict:
+    probas = self.model.predict_proba([commentaire])[0]
 
-        # -------------------------
-        # 4. Charger les labels
-        # -------------------------
-        # Méthode propre : depuis MLflow si label_cols.json existe
-        # Fallback : depuis le .joblib local si pas encore présent dans MLflow
+    predictions = {}
+    probabilities = {}
+    thresholds = {}
+    problemes_predits = []
 
-        self.label_cols = self._load_label_cols()
+    for label, proba in zip(self.label_cols, probas):
+      proba = float(proba)
+      threshold = self.default_threshold
+      pred = int(proba >= threshold)
 
-        # -------------------------
-        # 5. Seuil de décision
-        # -------------------------
-        # 0.50 = cohérent avec l'évaluation actuelle faite avec model.predict()
-        # Plus tard, tu pourras passer à des seuils optimisés par label.
+      predictions[label] = pred
+      probabilities[label] = round(proba, 4)
+      thresholds[label] = threshold
 
-        self.default_threshold = 0.50
+      if pred == 1:
+        problemes_predits.append(label)
 
-    def _load_label_cols(self):
-        """
-        Charge les labels associés au modèle.
+    return {
+        "commentaire": commentaire,
+        "concurrent": concurrent,
+        "problemes_predits": problemes_predits,
+        "predictions": predictions,
+        "probabilities": probabilities,
+        "thresholds": thresholds,
+        "model_info": self.model_info,
+    }
 
-        Priorité :
-        1. label_cols.json depuis les artefacts MLflow du run
-        2. fallback depuis le fichier joblib local
-        """
-
-        try:
-            label_cols_path = self.client.download_artifacts(
-                run_id=self.model_version.run_id,
-                path="label_cols.json"
-            )
-
-            with open(label_cols_path, "r", encoding="utf-8") as f:
-                label_cols = json.load(f)
-
-            return label_cols
-
-        except Exception:
-            """if not MODEL_PATH.exists():
-                raise FileNotFoundError(
-                    "Impossible de charger label_cols.json depuis MLflow "
-                    f"et modèle local introuvable : {MODEL_PATH}"
-                )
-
-            bundle = joblib.load(MODEL_PATH)"""
-
-            if "label_cols" not in bundle:
-                raise KeyError(
-                    "Le fichier joblib local ne contient pas la clé 'label_cols'."
-                )
-
-            return bundle["label_cols"]
-
-    def predict_one(self, commentaire: str, concurrent: Optional[str] = None) -> Dict:
-        # Le modèle renvoie une probabilité par label
-        probas = self.model.predict_proba([commentaire])[0]
-
-        predictions = {}
-        probabilities = {}
-        thresholds = {}
-        problemes_predits = []
-
-        for label, proba in zip(self.label_cols, probas):
-            proba = float(proba)
-            threshold = self.default_threshold
-            pred = int(proba >= threshold)
-
-            predictions[label] = pred
-            probabilities[label] = round(proba, 4)
-            thresholds[label] = threshold
-
-            if pred == 1:
-                problemes_predits.append(label)
-
-        return {
-            "commentaire": commentaire,
-            "concurrent": concurrent,
-            "problemes_predits": problemes_predits,
-            "predictions": predictions,
-            "probabilities": probabilities,
-            "thresholds": thresholds,
-            "model_info": self.model_info,
-        }
 
 class SentimentModelService:
-    """Service dédié au modèle d'analyse de sentiment (CamemBERT)"""
-    def __init__(self):
-        self.client = MlflowClient()
+  """Service dédié au modèle d'analyse de sentiment (CamemBERT)"""
 
-        if not CAMEMBERT_PATH.exists():
-            raise FileNotFoundError(f"Modèle CamemBERT introuvable : {CAMEMBERT_PATH}")
+  def __init__(self):
+    self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
+    self.id2label = {0: "négatif", 1: "mitigé", 2: "positif"}
+    self.default_threshold = 0.65
 
-        print(f"Chargement du modèle CamemBERT depuis {CAMEMBERT_PATH}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(str(CAMEMBERT_PATH))
-        self.model = AutoModelForSequenceClassification.from_pretrained(str(CAMEMBERT_PATH))
-        self.model.eval()
-        self.id2label = {0: "négatif", 1: "mitigé", 2: "positif"}
-        self.default_threshold = 0.65
+    try:
+      # Tentative de chargement via MLflow avec l'alias champion1
+      print(
+          "Chargement du modèle CamemBERT depuis MLflow Registry"
+          f" ({SENTIMENT_URI})..."
+      )
+      self.model_version = self.client.get_model_version_by_alias(
+          name=SENTIMENT_NAME, alias=SENTIMENT_ALIAS
+      )
 
-        try:
-            # Tentative de chargement via MLflow avec l'alias champion1
-            sentiment_uri = f"models:/{SENTIMENT_NAME}@{SENTIMENT_ALIAS}"
-            self.model_version = self.client.get_model_version_by_alias(
-                name=SENTIMENT_NAME,
-                alias=SENTIMENT_ALIAS
-            )
+      # Chargement du modèle et du tokenizer depuis MLflow
+      self.tokenizer = AutoTokenizer.from_pretrained(
+          CAMEMBERT_HF_ID
+      )  # Utilisation du tokenizer distant/cache
+      self.model = mlflow.transformers.load_model(SENTIMENT_URI)
 
-            import mlflow.transformers
-            self.pipeline = mlflow.transformers.load_model(sentiment_uri)
+      self.model_info = {
+          "model_name": SENTIMENT_NAME,
+          "model_alias": SENTIMENT_ALIAS,
+          "model_version": self.model_version.version,
+          "mlflow_run_id": self.model_version.run_id,
+          "source": "mlflow_registry",
+      }
+      print(
+          ">>> Modèle CamemBERT chargé avec succès depuis MLflow Registry."
+      )
 
-            # Ajout des infos pour le modèle local
-            self.model_info = {
-                "model_name": SENTIMENT_NAME,
-                "model_alias": SENTIMENT_ALIAS,
-                "model_version": self.model_version.version,
-                "mlflow_run_id": run_id_ou_fallback,
-                "source": "mlflow_registry"
-            }
-            print(">>> Modèle CamemBERT chargé avec succès depuis MLflow Registry.")
+    except Exception as e:
+      # Fallback sur Hugging Face Hub si MLflow n'est pas disponible ou l'alias introuvable
+      print(
+          f">>> Avertissement MLflow Sentiment ({e}). Bascule sur Hugging"
+          f" Face Hub : {CAMEMBERT_HF_ID}"
+      )
 
-        except Exception as e:
-            # Fallback sur le dossier local si MLflow échoue ou si l'alias n'existe pas encore
-            print(f">>> Avertissement MLflow Sentiment ({e}). Bascule sur le dossier local : {CAMEMBERT_PATH}")
-            if not CAMEMBERT_PATH.exists():
-                raise FileNotFoundError(f"Modèle CamemBERT introuvable localement : {CAMEMBERT_PATH}")
+      self.tokenizer = AutoTokenizer.from_pretrained(CAMEMBERT_HF_ID)
+      self.model = AutoModelForSequenceClassification.from_pretrained(
+          CAMEMBERT_HF_ID
+      )
+      self.model.eval()
 
-            self.tokenizer = AutoTokenizer.from_pretrained(str(CAMEMBERT_PATH))
-            self.model = AutoModelForSequenceClassification.from_pretrained(str(CAMEMBERT_PATH))
-            self.model.eval()
+      self.model_info = {
+          "model_name": SENTIMENT_NAME,
+          "source": CAMEMBERT_HF_ID,
+          "mode": "huggingface_hub_fallback",
+      }
 
-            self.model_info = {
-                "model_name": SENTIMENT_NAME,
-                "source": str(CAMEMBERT_PATH),
-                "mode": "local_fallback"
-            }
-    def predict_sentiment(self, text: str) -> dict:
-        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            logits = outputs.logits
-            probs = torch.softmax(logits, dim=-1)[0]
-            pred_id = torch.argmax(probs).item()
+  def predict_sentiment(self, text: str) -> dict:
+    inputs = self.tokenizer(
+        text, return_tensors="pt", truncation=True, max_length=256
+    )
 
-        return {
-            "commentaire": text,
-            "sentiment": self.id2label[pred_id],
-            "probabilities": {
-                "négatif": round(float(probs[0]), 4),
-                "mitigé": round(float(probs[1]), 4),
-                "positif": round(float(probs[2]), 4)
-            },
-            "thresholds": {
-                "négatif": self.default_threshold,
-                "mitigé": self.default_threshold,
-                "positif": self.default_threshold
-            },
-            "model_info": self.model_info
-        }
-    
+    # Cas où le modèle est un modèle PyTorch brut
+    if hasattr(self.model, "eval"):
+      self.model.eval()
+      with torch.no_grad():
+        outputs = self.model(**inputs)
+        logits = outputs.logits
+        probs = torch.softmax(logits, dim=-1)[0]
+    else:
+      # Cas où MLflow a retourné une pipeline PyFunc
+      res = self.model.predict([text])
+      probs = torch.tensor(
+          [res[0].get("négatif", 0), res[0].get("mitigé", 0), res[0].get("positif", 0)]
+      )
+
+    pred_id = torch.argmax(probs).item()
+
+    return {
+        "commentaire": text,
+        "sentiment": self.id2label[pred_id],
+        "probabilities": {
+            "négatif": round(float(probs[0]), 4),
+            "mitigé": round(float(probs[1]), 4),
+            "positif": round(float(probs[2]), 4),
+        },
+        "thresholds": {
+            "négatif": self.default_threshold,
+            "mitigé": self.default_threshold,
+            "positif": self.default_threshold,
+        },
+        "model_info": self.model_info,
+    }
+
+
 model_service = ModelService()
 sentiment_model_service = SentimentModelService()
