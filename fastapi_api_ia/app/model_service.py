@@ -194,7 +194,7 @@ class SentimentModelService:
 
   def predict_sentiment(self, text: str) -> dict:
     inputs = self.tokenizer(
-        text, return_tensors="pt", truncation=True, max_length=256
+        text, return_tensors="pt", truncation=True, max_length=512, padding=False
     )
 
     # Cas où le modèle est un modèle PyTorch brut
