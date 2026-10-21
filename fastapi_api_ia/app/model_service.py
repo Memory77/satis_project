@@ -205,11 +205,15 @@ class SentimentModelService:
         logits = outputs.logits
         probs = torch.softmax(logits, dim=-1)[0]
     else:
-      # Cas où MLflow a retourné une pipeline PyFunc
-      res = self.model.predict([text])
-      probs = torch.tensor(
-          [res[0].get("négatif", 0), res[0].get("mitigé", 0), res[0].get("positif", 0)]
-      )
+        # Cas où MLflow a retourné une pipeline PyFunc
+        '''res = self.model.predict([text])
+        probs = torch.tensor(
+            [res[0].get("négatif", 0), res[0].get("mitigé", 0), res[0].get("positif", 0)]
+        )'''
+
+        clean_text = self.tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
+        res = self.model.predict([clean_text])
+        probs = torch.tensor([res[0].get("négatif", 0), res[0].get("mitigé", 0), res[0].get("positif", 0)])
 
     pred_id = torch.argmax(probs).item()
 
