@@ -8,7 +8,7 @@ import requests, os, sys
 api_url = os.environ.get("SUPABASE_URL")
 secret_key = os.environ.get("SUPABASE_KEY")
 
-supabase_client = get_supabase_client()
+supabase_client = get_supabase_client(api_url, secret_key)
 
 try:
     
@@ -64,9 +64,10 @@ try:
 
         r.raise_for_status()
         
-        dict = r.json()
-        dict['review'] = y['id']
-        preds.append(dict)
+        dic = r.json()
+        dic['review'] = y['id']
+
+        preds.append(dic)
 
 except Exception as e:
     print(f"💥 {e}")
@@ -75,20 +76,20 @@ except Exception as e:
 try:
     #enregistrer les résultats dans supabase
     print(f"📤 Connexion Supabase... ({len(preds)} prédictions)")
-    supabase_client = get_supabase_client()
+    supabase_client = get_supabase_client(api_url, secret_key)
     
     if preds:
 
         #correspondance données/colonnes
         clean_preds = []
         for pred in preds:
-              pred.pop("concurrent")
+              pred.pop("commentaire")
               clean_preds.append(pred)
 
         clean_preds_uniques = list({item["review"]: item for item in clean_preds}.values())
         
         response = (
-            supabase_client.from_("multilabel_predict")
+            supabase_client.from_("sentiment_predict")
             .upsert(clean_preds_uniques, on_conflict="review, sentiment, probabilities, thresholds")
             .execute()
         )
