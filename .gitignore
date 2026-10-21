@@ -174,10 +174,32 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# Models
+fastapi_api_ia/models/modele_sentiment_camembert/model.safetensors
+
+# Environnement virtuel personnalisé
+venv1/
+
+# MLflow local
+mlruns/
+mlflow.db
+mlartifacts/
+
+# Models
+fastapi_api_ia/models/modele_sentiment_camembert/model.safetensors
+
+# Environnement virtuel personnalisé
+venv1/
+
+# MLflow local
+mlruns/
+mlflow.db
+mlartifacts/
+
 #mlflow
 mlruns/
 mlflow.db
 mlartifacts/
 .joblib
-ml_satisfaction/train_modele_multilabel.py
+
 # End of https://www.toptal.com/developers/gitignore/api/python

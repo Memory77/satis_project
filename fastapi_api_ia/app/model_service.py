@@ -1,16 +1,22 @@
 from pathlib import Path
 from typing import Dict, Optional
 import json
+<<<<<<< HEAD
 import os
 import dagshub
+=======
+
+import torch
+>>>>>>> feature/analyse-sentiments-bdd
 import joblib
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 # =========================
-# Configuration MLflow Model Registry
+# Configuration MLflow Model Registry (Multi-label)
 # =========================
 #mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
@@ -41,6 +47,12 @@ mlflow.set_tracking_uri(DAGSHUB_URI)
 #BASE_DIR = Path(__file__).resolve().parent.parent
 #MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
 
+# =========================
+# CamemBERT
+# =========================
+CAMEMBERT_PATH = BASE_DIR / "models" / "modele_sentiment_camembert"
+SENTIMENT_NAME = "avis_sentiment_model"
+SENTIMENT_ALIAS = "champion1"
 
 class ModelService:
     def __init__(self):
@@ -158,5 +170,80 @@ class ModelService:
             "model_info": self.model_info,
         }
 
+class SentimentModelService:
+    """Service dédié au modèle d'analyse de sentiment (CamemBERT)"""
+    def __init__(self):
+        self.client = MlflowClient()
 
+        if not CAMEMBERT_PATH.exists():
+            raise FileNotFoundError(f"Modèle CamemBERT introuvable : {CAMEMBERT_PATH}")
+
+        print(f"Chargement du modèle CamemBERT depuis {CAMEMBERT_PATH}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(str(CAMEMBERT_PATH))
+        self.model = AutoModelForSequenceClassification.from_pretrained(str(CAMEMBERT_PATH))
+        self.model.eval()
+        self.id2label = {0: "négatif", 1: "mitigé", 2: "positif"}
+        self.default_threshold = 0.65
+
+        try:
+            # Tentative de chargement via MLflow avec l'alias champion1
+            sentiment_uri = f"models:/{SENTIMENT_NAME}@{SENTIMENT_ALIAS}"
+            self.model_version = self.client.get_model_version_by_alias(
+                name=SENTIMENT_NAME,
+                alias=SENTIMENT_ALIAS
+            )
+
+            import mlflow.transformers
+            self.pipeline = mlflow.transformers.load_model(sentiment_uri)
+
+            # Ajout des infos pour le modèle local
+            self.model_info = {
+                "model_name": SENTIMENT_NAME,
+                "model_alias": SENTIMENT_ALIAS,
+                "model_version": self.model_version.version,
+                "mlflow_run_id": run_id_ou_fallback,
+                "source": "mlflow_registry"
+            }
+            print(">>> Modèle CamemBERT chargé avec succès depuis MLflow Registry.")
+
+        except Exception as e:
+            # Fallback sur le dossier local si MLflow échoue ou si l'alias n'existe pas encore
+            print(f">>> Avertissement MLflow Sentiment ({e}). Bascule sur le dossier local : {CAMEMBERT_PATH}")
+            if not CAMEMBERT_PATH.exists():
+                raise FileNotFoundError(f"Modèle CamemBERT introuvable localement : {CAMEMBERT_PATH}")
+
+            self.tokenizer = AutoTokenizer.from_pretrained(str(CAMEMBERT_PATH))
+            self.model = AutoModelForSequenceClassification.from_pretrained(str(CAMEMBERT_PATH))
+            self.model.eval()
+
+            self.model_info = {
+                "model_name": SENTIMENT_NAME,
+                "source": str(CAMEMBERT_PATH),
+                "mode": "local_fallback"
+            }
+    def predict_sentiment(self, text: str) -> dict:
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=-1)[0]
+            pred_id = torch.argmax(probs).item()
+
+        return {
+            "commentaire": text,
+            "sentiment": self.id2label[pred_id],
+            "probabilities": {
+                "négatif": round(float(probs[0]), 4),
+                "mitigé": round(float(probs[1]), 4),
+                "positif": round(float(probs[2]), 4)
+            },
+            "thresholds": {
+                "négatif": self.default_threshold,
+                "mitigé": self.default_threshold,
+                "positif": self.default_threshold
+            },
+            "model_info": self.model_info
+        }
+    
 model_service = ModelService()
+sentiment_model_service = SentimentModelService()
