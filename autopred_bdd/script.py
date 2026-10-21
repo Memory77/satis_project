@@ -1,4 +1,3 @@
-from autopred_bdd.script_multilabel import api_url
 from supabase import Client, create_client
 import os
 
