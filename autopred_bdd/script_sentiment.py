@@ -82,7 +82,6 @@ try:
         #correspondance données/colonnes
         clean_preds = []
         for pred in preds:
-              pred.pop("commentaire")
               pred.pop("concurrent")
               clean_preds.append(pred)
 
