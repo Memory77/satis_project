@@ -22,7 +22,11 @@ REPO_OWNER = "maudb18"
 REPO_NAME = "satis_project"
 DAGSHUB_URI = f"https://dagshub.com/{REPO_OWNER}/{REPO_NAME}.mlflow"
 
-dagshub.init(repo_owner=REPO_OWNER, repo_name=REPO_NAME, mlflow=True)
+token = os.environ.get("DAGSHUB_USER_TOKEN")
+if token:
+    os.environ["MLFLOW_TRACKING_USERNAME"] = REPO_OWNER
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = token
+
 mlflow.set_tracking_uri(DAGSHUB_URI)
 
 # Modèle Multi-label
