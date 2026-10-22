@@ -52,14 +52,12 @@ class ModelService:
   def __init__(self):
     self.client = MlflowClient()
 
-<<<<<<< HEAD
   def __init__(self):
     self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
-=======
+
         # -------------------------
         # 1. Récupérer la version exacte du modèle champion
         # -------------------------
->>>>>>> feature/analyse-sentiments-bdd
 
         self.model_version = self.client.get_model_version_by_alias(
             name=MODEL_NAME,
