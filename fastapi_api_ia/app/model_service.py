@@ -49,11 +49,8 @@ MODEL_PATH = BASE_DIR / "models" / "modele_multilabel_avis_local.joblib"
 
 class ModelService:
 
-  def __init__(self):
-    self.client = MlflowClient()
-
-  def __init__(self):
-    self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
+    def __init__(self):
+        self.client = MlflowClient(tracking_uri=DAGSHUB_URI)
 
         # -------------------------
         # 1. Récupérer la version exacte du modèle champion

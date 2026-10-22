@@ -1,5 +1,4 @@
 from supabase import Client, create_client
-import os
 
 def get_supabase_client(url, key):
     if not url or not key:
