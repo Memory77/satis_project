@@ -15,3 +15,11 @@ class PredictResponse(BaseModel):
     probabilities: Dict[str, float]
     thresholds: Dict[str, float]
     model_info: Dict
+
+
+class SentimentResponse(BaseModel):
+    commentaire: str
+    sentiment: str
+    probabilities: Dict[str, float]
+    thresholds: Dict[str, float]
+    model_info: Optional[Dict] = None
