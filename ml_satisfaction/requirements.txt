@@ -5,3 +5,4 @@ joblib
 mlflow
 torch
 transformers
+torchvision

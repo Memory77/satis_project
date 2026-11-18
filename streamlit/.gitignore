@@ -173,4 +173,7 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# Ignore les secrets Streamlit
+streamlit/.streamlit/secrets.toml
+
 # End of https://www.toptal.com/developers/gitignore/api/python
