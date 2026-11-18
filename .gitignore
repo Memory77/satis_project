@@ -185,3 +185,4 @@ mlflow.db
 mlartifacts/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+streamlit/.streamlit/secrets.toml
