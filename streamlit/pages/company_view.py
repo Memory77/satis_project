@@ -53,6 +53,13 @@ else:
         st.markdown("---")
 
         col_left, col_right = st.columns(2)
+        rating_palette = {
+            1: "#d62728",  # rouge
+            2: "#ff7f0e",  # orange
+            3: "#f1c40f",  # jaune
+            4: "#2ecc71",  # vert clair
+            5: "#1e8449",  # vert foncé
+        }
 
         with col_left:
             st.subheader("Distribution des notes (1 à 5 étoiles)")
@@ -67,10 +74,10 @@ else:
                     y="Nombre", 
                     text="Nombre",
                     title=f"Répartition des notes - {selected_company}",
-                    color="Note",
-                    color_continuous_scale="Viridis"
+                    color=df_rating_counts["Note"].astype(str),
+                    color_discrete_map={str(k): v for k, v in rating_palette.items()},
                 )
-                st.plotly_chart(fig_ratings, use_container_width=True)
+                st.plotly_chart(fig_ratings, width='stretch')
 
         with col_right:
             st.subheader("Évolution temporelle des avis")
@@ -89,7 +96,7 @@ else:
                         markers=True, 
                         title=f"Volume annuel des avis - {selected_company}"
                     )
-                    st.plotly_chart(fig_time, use_container_width=True)
+                    st.plotly_chart(fig_time, width='stretch')
                 else:
                     st.info("Données de date insuffisantes pour afficher l'évolution.")
 
@@ -103,5 +110,5 @@ else:
             
             st.dataframe(
                 df_company[display_cols].sort_values(by="date_pub", ascending=False).head(10),
-                use_container_width=True
+                width='stretch'
             )

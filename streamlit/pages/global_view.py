@@ -88,18 +88,31 @@ st.markdown("---")
 
 col_left, col_right = st.columns(2)
 
+
 with col_left:
     st.subheader("Classement des enseignes (Note moyenne sur 5)")
+
+    df_plot = df_classement.copy()
+    df_plot["Note_Entiere"] = df_plot["Note_Moyenne"].astype(int)
+
     fig_bar = px.bar(
-        df_classement, 
-        x="Note_Moyenne", 
-        y="Enseigne", 
+        df_plot,
+        x="Note_Moyenne",
+        y="Enseigne",
         orientation="h",
         title="Note moyenne par enseigne / 5",
-        color="Note_Moyenne",
-        color_continuous_scale="Plotly3"
+        color="Note_Entiere",
+        range_color=[1, 5],
+        color_continuous_scale=[
+            (0.0, "#d62728"),   # 1.0 -> rouge
+            (0.25, "#ff7f0e"),  # 2.0 -> orange
+            (0.5, "#f1c40f"),   # 3.0 -> jaune
+            (0.75, "#2ecc71"),  # 4.0 -> vert clair
+            (1.0, "#1e8449"),   # 5.0 -> vert foncé
+        ],
     )
-    st.plotly_chart(fig_bar, use_container_width=True)
+
+    st.plotly_chart(fig_bar, width="stretch")
 
 with col_right:
     st.subheader("Volume d'avis par enseigne et par note")
@@ -110,9 +123,9 @@ with col_right:
         x="Enseigne", 
         y=["Avis_Positifs", "Avis_Negatifs"], 
         title="Répartition simplifiée Positif vs Négatif", 
-        color_discrete_map={"Avis_Positifs": "green", "Avis_Negatifs": "red"}
+        color_discrete_map={"Avis_Positifs": "#1e8449", "Avis_Negatifs": "#d62728"}
     )
-    st.plotly_chart(fig_stack, use_container_width=True)
+    st.plotly_chart(fig_stack, width='stretch')
 
 st.subheader("Évolution temporelle du volume d'avis")
 st.markdown("""
@@ -120,4 +133,4 @@ st.markdown("""
 """)
 
 fig_line = px.line(df_temps, x="Date", y="Volume", markers=True, title="Tendance globale du volume d'avis")
-st.plotly_chart(fig_line, use_container_width=True)
+st.plotly_chart(fig_line, width='stretch')
